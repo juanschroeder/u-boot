@@ -61,6 +61,9 @@ config TARGET_XILINX_MBV
 config TARGET_ASPEED_AST2700_IBEX
 	bool "Support Ibex RISC-V cores on Aspeed AST2700 SoC"
 
+config TARGET_OPENHWGROUP_CVWSOC_NEXYSA7
+	bool "Support Core-V Wally SoC on Nexys A7 Board"
+
 endchoice
 
 config SYS_ICACHE_OFF
@@ -119,6 +122,7 @@ source "board/spacemit/bananapi-f3/Kconfig"
 source "board/starfive/visionfive2/Kconfig"
 source "board/thead/th1520_lpi4a/Kconfig"
 source "board/xilinx/mbv/Kconfig"
+source "board/openhwgroup/cvwsoc_nexysa7/Kconfig"
 
 # platform-specific options below
 source "arch/riscv/cpu/andes/Kconfig"

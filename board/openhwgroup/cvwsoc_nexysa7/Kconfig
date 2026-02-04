@@ -1,0 +1,19 @@
+if TARGET_OPENHWGROUP_CVWSOC_NEXYSA7
+
+config SYS_BOARD
+	default "cvwsoc_nexysa7"
+
+config SYS_VENDOR
+	default "openhwgroup"
+
+config SYS_CPU
+	default "generic"
+
+config SPL_TEXT_BASE
+	default 0x08000000
+
+config BOARD_SPECIFIC_OPTIONS # dummy
+	def_bool y
+	select GENERIC_RISCV
+
+endif
