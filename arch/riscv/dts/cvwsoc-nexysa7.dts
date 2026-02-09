@@ -12,8 +12,9 @@
 
   memory@80000000 {
     device_type = "memory";
+    // not using beyond 0x87600000 for now
     //reg = <0x00 0x80000000 0x00 0x8000000>;
-    reg = <0x00 0x80000000 0x00 0x7760000>;
+    reg = <0x00 0x80000000 0x00 0x7600000>;
   };
 
   cpus {
@@ -196,45 +197,24 @@
   };
 
   reserved-memory {
-      #address-cells = <2>;
-      #size-cells = <2>;
-      ranges;
-    /*
-    framebuffer@87E00000 {
-        reg = <0x0 0x87E00000 0x0 0x00096000>; // 640 KiB reserved
-        no-map;
-    };
-    dmabuffer@87F00000 {
-        compatible = "shared-dma-pool"; // for later DMA use
-        reg = <0x0 0x87F00000 0x0 0x00100000>; // 1 MiB reserved
-        no-map;
-    };
-   */
+    #address-cells = <2>;
+    #size-cells = <2>;
+    ranges;
+
     framebuffer@87500000 {
         //reg = <0x0 0x87E00000 0x0 0x00096000>; // 640 KiB reserved
         reg = <0x0 0x87500000 0x0 0x00100000>; // whole 1MB reserved (for debugging purposes)
         no-map;
     };
-    dmabuffer@87600000 {
+    dmabuffer@87400000 {
         compatible = "shared-dma-pool"; // for later DMA use
-        reg = <0x0 0x87600000 0x0 0x00100000>; // 1 MiB reserved
+        reg = <0x0 0x87400000 0x0 0x00100000>; // 1 MiB reserved
         no-map;
     };
 
   };
     
-
   //320 x 240
-  /*
-  framebuffer0: framebuffer@87e00000 {
-    compatible = "simple-framebuffer";
-    reg = <0x0 0x87E00000 0x0 0x00025800>;
-    width = <320>;
-    height = <240>;
-    stride = <640>;  // 320 * 2
-    format = "r5g6b5";
-  };
-   */
   framebuffer0: framebuffer@87500000 {
     compatible = "simple-framebuffer";
     reg = <0x0 0x87500000 0x0 0x00025800>;
