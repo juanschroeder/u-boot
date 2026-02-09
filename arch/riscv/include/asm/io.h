@@ -35,13 +35,38 @@ static inline void sync(void)
 #define __raw_readl(a)			__arch_getl(a)
 #define __raw_readq(a)			__arch_getq(a)
 
-/* adding for cadence_qspi_apb.c */
-#define memcpy_fromio(a, c, l)		memcpy((a), (c), (l))
-#define memcpy_toio(c, a, l)		memcpy((c), (a), (l))
-
 #define dmb()		mb()
 #define __iormb()	rmb()
 #define __iowmb()	wmb()
+
+/*
+ * Copy to/from I/O memory using byte accesses.
+ * Required on systems where normal memcpy() to MMIO can fault.
+ */
+static inline void memcpy_toio(volatile void __iomem *dst,
+                               const void *src, size_t len)
+{
+	const u8 *s = (const u8 *)src;
+	volatile u8 __iomem *d = (volatile u8 __iomem *)dst;
+
+	while (len--)
+		__raw_writeb(*s++, d++);
+
+	__iowmb();
+}
+
+static inline void memcpy_fromio(void *dst,
+                                 const volatile void __iomem *src,
+                                 size_t len)
+{
+	u8 *d = (u8 *)dst;
+	const volatile u8 __iomem *s = (const volatile u8 __iomem *)src;
+
+	while (len--)
+		*d++ = __raw_readb(s++);
+
+	__iormb();
+}
 
 static inline void writeb(u8 val, volatile void __iomem *addr)
 {

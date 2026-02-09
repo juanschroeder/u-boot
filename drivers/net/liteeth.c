@@ -44,27 +44,42 @@ struct liteeth {
 	u32 rx_slot;
 	u32 num_rx_slots;
 	void __iomem *rx_base;
+
+	/* RX bounce buffer in normal RAM */
+	uchar rx_copy[PKTSIZE_ALIGN] __attribute__((aligned(ARCH_DMA_MINALIGN)));
 };
 
 static int liteeth_recv(struct udevice *dev, int flags, uchar **packetp)
 {
-	struct liteeth *priv = dev_get_priv(dev);
-	u8 rx_slot;
-	int len;
+    struct liteeth *priv = dev_get_priv(dev);
+    u8 rx_slot;
+    int len;
+    void __iomem *src;
 
-	if (!litex_read8(priv->base + LITEETH_WRITER_EV_PENDING)) {
-		debug("liteeth: No packet ready\n");
-		return -EAGAIN;
-	}
+    if (!litex_read8(priv->base + LITEETH_WRITER_EV_PENDING)) {
+        debug("liteeth: No packet ready\n");
+        return -EAGAIN;
+    }
 
-	rx_slot = litex_read8(priv->base + LITEETH_WRITER_SLOT);
-	len = litex_read32(priv->base + LITEETH_WRITER_LENGTH);
+    rx_slot = litex_read8(priv->base + LITEETH_WRITER_SLOT);
+    len     = litex_read32(priv->base + LITEETH_WRITER_LENGTH);
 
-	debug("%s: slot %d len 0x%x\n", __func__, rx_slot, len);
+    debug("%s: slot %d len 0x%x\n", __func__, rx_slot, len);
 
-	*packetp = priv->rx_base + rx_slot * priv->slot_size;
+    /* Basic sanity */
+    if (len <= 0 || len > PKTSIZE_ALIGN || len > priv->slot_size) {
+        /* Drop; let free_pkt clear the pending bit */
+        debug("liteeth: drop len=%d slot_size=0x%x\n", len, priv->slot_size);
+        return -EINVAL;
+    }
 
-	return len;
+    src = priv->rx_base + rx_slot * priv->slot_size;
+
+    /* Copy out of MMIO into RAM so the net stack parses from normal memory */
+    memcpy_fromio(priv->rx_copy, src, len);
+
+    *packetp = priv->rx_copy;
+    return len;
 }
 
 static int liteeth_free_pkt(struct udevice *dev, uchar *packet, int length)
