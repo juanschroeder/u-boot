@@ -6,6 +6,9 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "openhwgroup"
 
+config SYS_CONFIG_NAME
+        default "openhwgroup_cvwsoc_nexysa7"
+
 config SYS_CPU
 	default "generic"
 
