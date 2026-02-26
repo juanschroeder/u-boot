@@ -14,7 +14,7 @@
 #include <usb.h>
 #include <virtio_types.h>
 #include <virtio.h>
-#include <configs/openhwgroup_cvwsoc_nexysa7.h>
+#include <configs/openhwgroup_cvwsoc_genesys2.h>
 #include <../common/cvwsoc_common.h>
 
 int board_init(void) {

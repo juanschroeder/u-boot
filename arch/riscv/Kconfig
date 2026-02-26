@@ -64,6 +64,9 @@ config TARGET_ASPEED_AST2700_IBEX
 config TARGET_OPENHWGROUP_CVWSOC_NEXYSA7
 	bool "Support Core-V Wally SoC on Nexys A7 Board"
 
+config TARGET_OPENHWGROUP_CVWSOC_GENESYS2
+        bool "Support Core-V Wally SoC on Genesys 2 Board"
+
 endchoice
 
 config SYS_ICACHE_OFF
@@ -123,6 +126,7 @@ source "board/starfive/visionfive2/Kconfig"
 source "board/thead/th1520_lpi4a/Kconfig"
 source "board/xilinx/mbv/Kconfig"
 source "board/openhwgroup/cvwsoc_nexysa7/Kconfig"
+source "board/openhwgroup/cvwsoc_genesys2/Kconfig"
 
 # platform-specific options below
 source "arch/riscv/cpu/andes/Kconfig"
