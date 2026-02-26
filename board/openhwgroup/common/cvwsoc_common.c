@@ -40,7 +40,9 @@ int vga_fb_init(const uint64_t uiFBBaseAddr, const uint32_t uiFbWidth, const uin
     return 0;
 }
 
-int vga_init(const uint32_t uiVGABaseAddr, const uint64_t uiFBBaseAddr, const uint32_t uiFbWidth, const uint32_t uiFBHeight)
+int vga_init(const uint32_t uiVGABaseAddr, const uint64_t uiFBBaseAddr,
+    const uint32_t uiFbWidth, const uint32_t uiFBHeight,
+    const uint32_t uiClkDiv)
 {
     
     volatile uint32_t *vga = (volatile uint32_t*)(void*)(uintptr_t) uiVGABaseAddr;
@@ -48,8 +50,8 @@ int vga_init(const uint32_t uiVGABaseAddr, const uint64_t uiFBBaseAddr, const ui
     // # disable
     vga[0] = 0x00000000;
 
-    // # clkdiv (CHANGE if your input clk isn't 100 MHz)
-    vga[1] = 0x00000004;
+    // # clkdiv (CHANGE depending on BUSCLK )
+    vga[1] = uiClkDiv;
 
     // # 320x240
     vga[2] = 320;   // HVIS

@@ -150,7 +150,7 @@
     busclk: busclk {
       #clock-cells = <0>;
       compatible = "fixed-clock";
-      clock-frequency = <81250000>;
+      clock-frequency = <200000000>;
       clock-output-names = "busclk";
     };
 
@@ -161,12 +161,6 @@
         #dma-cells = <1>;
         xlnx,addrwidth = <0x20>; // 32-bit addresses
         status = "okay";
-
-        
-        // DMA visible memory window.
-        // For your 128MB DDR at 0x8000_0000..0x87FF_FFFF:
-        //dma-ranges = <0x80000000 0x80000000 0x08000000>;
-        //dma-ranges = <0x0 0x80000000  0x0 0x80000000  0x08000000>;
 
         clock-names = "s_axi_lite_aclk", "m_axi_aclk", "axi_aclk";
         clocks = <&busclk>, <&busclk>, <&busclk>;
@@ -201,13 +195,13 @@
     #size-cells = <2>;
     ranges;
 
-    framebuffer@BFF60000 {
-        reg = <0x0 0xBFF60000 0x0 0x00100000>; // whole 1MB reserved (for debugging purposes)
+    framebuffer@BFF00000 {
+        reg = <0x0 0xBFF00000 0x0 0x00100000>; // whole 1MB reserved (for debugging purposes)
         no-map;
     };
     dmabuffer@c {
         compatible = "shared-dma-pool"; // for later DMA use
-        reg = <0x0 0x87400000 0x0 0x00100000>; // 1 MiB reserved
+        reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
         no-map;
     };
 
@@ -220,9 +214,9 @@
   };
     
   //320 x 240
-  framebuffer0: framebuffer@87500000 {
+  framebuffer0: framebuffer@BFF00000 {
     compatible = "simple-framebuffer";
-    reg = <0x0 0xBFF60000 0x0 0x00025800>;
+    reg = <0x0 0xBFF00000 0x0 0x00025800>;
     width = <320>;
     height = <240>;
     stride = <640>;  // 320 * 2
