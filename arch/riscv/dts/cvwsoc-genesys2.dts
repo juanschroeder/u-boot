@@ -127,24 +127,22 @@
         status = "okay";
     };
 
-    eth0: ethernet@11003000 {
+    eth0: ethernet@100D3000 {
         compatible = "litex,liteeth";
 
-        reg = <0x0 0x11003000 0x0 0x100>,   // mac  (csr+0x1000) 
-                <0x0 0x11002800 0x0 0x100>,   // mdio (csr+0x0800)
-                <0x0 0x11000000 0x0 0x2000>;  // buffer 
+        reg = <0x0 0x100D3000 0x0 0x100>,   // mac  (csr+0x1000)
+                <0x0 0x100D2800 0x0 0x100>,   // mdio (csr+0x0800)
+                <0x0 0x100D0000 0x0 0x2000>;  // buffer
         reg-names = "mac", "mdio", "buffer";
 
         interrupt-parent = <0x03>;
-        interrupts = <0xC>;
+        interrupts = <15>;
 
         litex,rx-slots  = <2>;
         litex,tx-slots  = <2>;
         litex,slot-size = <0x800>;
 
-        // disabled for now
-        //status = "okay";
-        status = "disabled";
+        status = "okay";
     };
 
     busclk: busclk {
