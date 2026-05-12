@@ -98,6 +98,8 @@
 
       #address-cells = <1>;
       #size-cells = <0>;
+      // Currently disabled in u-boot => AXI SDHCI peripheral is mmc0
+      /*
       mmc@0 {
         compatible = "mmc-spi-slot";
         reg = <0>;
@@ -105,6 +107,7 @@
         voltage-ranges = <3300 3300>;
         disable-wp;
       };
+      */
     };
 
     clint@2000000 {
@@ -184,6 +187,20 @@
         interrupt-parent = <&plic>;
         interrupts = <14>;
         dma-noncoherent;
+    };
+
+    mmc@10090000 {
+        #address-cells = <0x00000001>;
+        #size-cells = <0x00000000>;
+        reg = <0x00000000 0x10090000 0x00000000 0x00002000>;
+        compatible = "nuvoton,npcm750-sdhci";
+        bus-width = <4>;
+        clock-frequency = <25000000>;
+        max-frequency = <10000000>;
+        disable-wp;
+        no-1-8-v;
+        interrupts = <17>;
+        interrupt-parent = <&plic>;
     };
     
   };
