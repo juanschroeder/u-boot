@@ -1,0 +1,243 @@
+/dts-v1/;
+
+/ {
+  #address-cells = <0x02>;
+  #size-cells = <0x02>;
+  compatible = "wally-virt"; //FIXME
+  model = "wally-virt,qemu"; //FIXME
+
+  chosen {
+    stdout-path = "/soc/uart@10000000";
+  };
+
+  memory@80000000 {
+    device_type = "memory";
+    reg = <0x00 0x80000000 0x00 0x40000000>;
+  };
+
+  cpus {
+    #address-cells = <0x01>;
+    #size-cells = <0x00>;
+    clock-frequency = <12500000>;
+    timebase-frequency = <12500000>;
+
+    cpu@0 {
+      phandle = <0x01>;
+      device_type = "cpu";
+      reg = <0x00>;
+      status = "okay";
+      compatible = "riscv";
+      riscv,isa-base = "rv64i";
+      riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "sstc", "svade", "svadu", "svinval", "svnapot", "svpbmt", "zba", "zbb", "zbc", "zbs", "zca", "zcb", "zcd", "zfa", "zfh", "zkn", "zkt", "zicbom", "zicboz", "zicntr", "zicond", "zicsr", "zifencei", "zihpm";
+      riscv,cboz-block-size = <64>;
+      riscv,cbom-block-size = <64>;
+      mmu-type = "riscv,sv48";
+
+      interrupt-controller {
+        #interrupt-cells = <0x01>;
+        interrupt-controller;
+        compatible = "riscv,cpu-intc";
+        phandle = <0x02>;
+      };
+    };
+  };
+
+  soc {
+    #address-cells = <0x02>;
+    #size-cells = <0x02>;
+    compatible = "simple-bus";
+    ranges;
+
+    refclk: refclk {
+      #clock-cells = <0>;
+      compatible = "fixed-clock";
+      clock-frequency = <12500000>;
+      clock-output-names = "xtal";
+    };
+
+    gpio0: gpio@10060000 {
+      compatible = "sifive,gpio0";
+      interrupt-parent = <0x03>;
+      interrupts = <3>;
+      reg = <0x00 0x10060000 0x00 0x1000>;
+      reg-names = "control";
+      gpio-controller;
+      #gpio-cells = <2>;
+      interrupt-controller;
+      #interrupt-cells = <2>;
+    };
+
+    uart@10000000 {
+      interrupts = <0x0a>;
+      interrupt-parent = <0x03>;
+      clock-frequency = <12500000>;
+      reg = <0x00 0x10000000 0x00 0x100>;
+      compatible = "ns16550a";
+    };
+
+    plic: plic@c000000 {
+      phandle = <0x03>;
+      riscv,ndev = <0x35>;
+      reg = <0x00 0xc000000 0x00 0x210000>;
+      interrupts-extended = <0x02 0x0b 0x02 0x09>;
+      interrupt-controller;
+      compatible = "sifive,plic-1.0.0\0riscv,plic0";
+      #interrupt-cells = <0x01>;
+      #address-cells = <0x00>;
+    };
+
+    spi@13000 {
+      compatible = "sifive,spi0";
+      interrupt-parent = <0x03>;
+      interrupts = <0x14>;
+      reg = <0x0 0x13000 0x0 0x1000>;
+      reg-names = "control";
+      clocks = <&refclk>;
+
+      sifive,fifo-depth = <64>;
+
+      #address-cells = <1>;
+      #size-cells = <0>;
+      mmc@0 {
+        compatible = "mmc-spi-slot";
+        reg = <0>;
+        spi-max-frequency = <5000000>;
+        voltage-ranges = <3300 3300>;
+        disable-wp;
+      };
+    };
+
+    clint@2000000 {
+      interrupts-extended = <0x02 0x03 0x02 0x07>;
+      reg = <0x00 0x2000000 0x00 0x10000>;
+      compatible = "sifive,clint0\0riscv,clint0";
+    };
+
+    uart1: uart@11004000 {
+        compatible = "ns16550a";
+        reg = <0x0 0x11004000 0x0 0x1000>;
+
+        interrupt-parent = <&plic>;
+        interrupts = <0x0b>; // 11
+
+        clock-frequency = <125000000>;
+        reg-shift = <0>;
+        reg-io-width = <1>;
+
+        status = "disabled";
+    };
+
+    eth0: ethernet@100D3000 {
+        compatible = "litex,liteeth";
+
+        reg = <0x0 0x100D3000 0x0 0x100>,   // mac  (csr+0x1000)
+                <0x0 0x100D2800 0x0 0x100>,   // mdio (csr+0x0800)
+                <0x0 0x100D0000 0x0 0x2000>;  // buffer
+        reg-names = "mac", "mdio", "buffer";
+
+        interrupt-parent = <&plic>;
+        interrupts = <15>;
+
+        litex,rx-slots  = <2>;
+        litex,tx-slots  = <2>;
+        litex,slot-size = <0x800>;
+
+        status = "disabled";
+    };
+
+    busclk: busclk {
+      #clock-cells = <0>;
+      compatible = "fixed-clock";
+      clock-frequency = <100000000>;
+      clock-output-names = "busclk";
+    };
+
+    cdma0: dma@100A0000 {
+        compatible = "xlnx,axi-cdma-1.00.a";
+        reg = <0x0 0x100A0000 0x0 0x1000>;
+
+        #dma-cells = <1>;
+        xlnx,addrwidth = <0x20>; // 32-bit addresses
+        status = "disabled";
+
+        clock-names = "s_axi_lite_aclk", "m_axi_aclk", "axi_aclk";
+        clocks = <&busclk>, <&busclk>, <&busclk>;
+
+        // Mark non-coherent
+        dma-noncoherent;
+
+        interrupt-parent = <&plic>;
+        interrupts = <13>;
+
+        dma-channel@100A0000 {
+            compatible = "xlnx,axi-cdma-channel";
+            interrupts = <13>;
+            xlnx,datawidth = <0x40>; // 64-bit datapath
+            xlnx,device-id = <0>;
+            xlnx,max-burst-len = <0x10>;
+        };
+    };
+
+    usb@100C0000 {
+        compatible = "generic-ohci";
+        reg = <0x0 0x100C0000 0x0 0x1000>;
+        interrupt-parent = <&plic>;
+        interrupts = <14>;
+        dma-noncoherent;
+        status = "disabled";
+    };
+
+    mmc@10090000 {
+        #address-cells = <0x00000001>;
+        #size-cells = <0x00000000>;
+        reg = <0x00000000 0x10090000 0x00000000 0x00002000>;
+        compatible = "nuvoton,npcm750-sdhci";
+        bus-width = <4>;
+        clock-frequency = <25000000>;
+        max-frequency = <10000000>;
+        disable-wp;
+        no-1-8-v;
+        interrupts = <17>;
+        interrupt-parent = <&plic>;
+        status = "disabled";
+    };
+    
+  };
+
+  reserved-memory {
+    #address-cells = <2>;
+    #size-cells = <2>;
+    ranges;
+
+    /*
+    framebuffer@BFF00000 {
+        reg = <0x0 0xBFF00000 0x0 0x00100000>; // whole 1MB reserved (for debugging purposes)
+        no-map;
+    };
+    dmabuffer@c {
+        compatible = "shared-dma-pool"; // for later DMA use
+        reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
+        no-map;
+    };
+    */
+
+    // Prevent it from using this region
+    opensbi@80000000 {
+        reg = <0x0 0x80000000  0x0 0x0080000>; // 512 Kib
+        no-map;
+    };
+
+  };
+    
+  //320 x 240
+  /*
+  framebuffer0: framebuffer@BFF00000 {
+    compatible = "simple-framebuffer";
+    reg = <0x0 0xBFF00000 0x0 0x00025800>;
+    width = <320>;
+    height = <240>;
+    stride = <640>;  // 320 * 2
+    format = "r5g6b5";
+  };
+  */
+};
