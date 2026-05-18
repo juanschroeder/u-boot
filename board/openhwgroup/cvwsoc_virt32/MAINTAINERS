@@ -1,0 +1,5 @@
+GENESYS2 CVWSOC BOARD
+M:	Juan Schroeder <jcschroeder@gmail.com>
+S:	Maintained
+F:      board/openhwgroup/cvwsoc-virt32/
+F:	include/configs/cvwsoc-riscv.h
