@@ -19,9 +19,32 @@
 
 int board_init(void) {
 
-    vga_init(CVWSOC_VGA_ADDR, CVWSOC_FB_ADDR, CVWSOC_FB_WIDTH, CVWSOC_FB_HEIGHT, 
+    ofnode fb;
+    fdt_addr_t fb_base;
+    fdt_size_t fb_size;
+    u32 ui_width, ui_height;
+    int ret;
+
+    fb = ofnode_by_compatible(ofnode_null(), "simple-framebuffer");
+    if (ofnode_valid(fb) && ofnode_is_enabled(fb))
+    {
+        fb_base = ofnode_get_addr_size_index(fb, 0, &fb_size);
+        if (fb_base == FDT_ADDR_T_NONE)
+            return 0;
+
+        ret = ofnode_read_u32(fb, "width", &ui_width);
+        if (ret)
+            return 0;
+
+        ret = ofnode_read_u32(fb, "height", &ui_height);
+        if (ret)
+            return 0;
+
+        vga_init(CVWSOC_VGA_ADDR, fb_base, ui_width, ui_height,
         CVWSOC_VGA_CLK_DIV);
-    vga_fb_init(CVWSOC_FB_ADDR, CVWSOC_FB_WIDTH, CVWSOC_FB_HEIGHT);
+        vga_fb_init(fb_base, ui_width, ui_height);
+
+    }
 
     return 0;
 }

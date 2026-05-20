@@ -25,7 +25,7 @@ int vga_fb_init(const uint64_t uiFBBaseAddr, const uint32_t uiFbWidth, const uin
     // RGB565 color bars
     const uint16_t bars[8] = { 0xFFFF, 0xFFE0, 0x07FF, 0x07E0, 0xF81F, 0xF800, 0x001F, 0x0000 };
 
-    volatile uint16_t *fb = (volatile uint16_t *)(uintptr_t)CVWSOC_FB_ADDR;
+    volatile uint16_t *fb = (volatile uint16_t *)(uintptr_t)uiFBBaseAddr;
     uint32_t barw = uiFbWidth / 8;
     if (barw == 0) 
         barw = 1;
