@@ -67,6 +67,9 @@ config TARGET_OPENHWGROUP_CVWSOC_NEXYSA7
 config TARGET_OPENHWGROUP_CVWSOC_GENESYS2
         bool "Support Core-V Wally SoC on Genesys 2 Board"
 
+config TARGET_OPENHWGROUP_CVWSOC_GENESYS2RV32
+        bool "Support Core-V Wally SoC RV32 on Genesys 2 Board"
+
 config TARGET_OPENHWGROUP_CVWSOC_VIRT
         bool "Support Core-V Wally SoC for QEMU/simulation"
 
@@ -133,6 +136,7 @@ source "board/thead/th1520_lpi4a/Kconfig"
 source "board/xilinx/mbv/Kconfig"
 source "board/openhwgroup/cvwsoc_nexysa7/Kconfig"
 source "board/openhwgroup/cvwsoc_genesys2/Kconfig"
+source "board/openhwgroup/cvwsoc_genesys2rv32/Kconfig"
 source "board/openhwgroup/cvwsoc_virt/Kconfig"
 source "board/openhwgroup/cvwsoc_virt32/Kconfig"
 
