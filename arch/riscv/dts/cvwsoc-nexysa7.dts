@@ -8,6 +8,17 @@
 
   chosen {
     stdout-path = "/soc/uart@10000000";
+
+    //320 x 240
+    framebuffer0: framebuffer@87500000 {
+      compatible = "simple-framebuffer";
+      reg = <0x0 0x87500000 0x0 0x00025800>;
+      width = <320>;
+      height = <240>;
+      stride = <640>;  // 320 * 2
+      format = "r5g6b5";
+    };
+
   };
 
   memory@80000000 {
@@ -212,16 +223,6 @@
         no-map;
     };
 
-  };
-    
-  //320 x 240
-  framebuffer0: framebuffer@87500000 {
-    compatible = "simple-framebuffer";
-    reg = <0x0 0x87500000 0x0 0x00025800>;
-    width = <320>;
-    height = <240>;
-    stride = <640>;  // 320 * 2
-    format = "r5g6b5";
   };
 
 };

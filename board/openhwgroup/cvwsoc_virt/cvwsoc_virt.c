@@ -19,10 +19,6 @@
 
 int board_init(void) {
 
-    //vga_init(CVWSOC_VGA_ADDR, CVWSOC_FB_ADDR, CVWSOC_FB_WIDTH, CVWSOC_FB_HEIGHT, 
-    //    CVWSOC_VGA_CLK_DIV);
-    //vga_fb_init(CVWSOC_FB_ADDR, CVWSOC_FB_WIDTH, CVWSOC_FB_HEIGHT);
-
     return 0;
 }
 
