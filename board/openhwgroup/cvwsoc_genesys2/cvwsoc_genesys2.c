@@ -40,9 +40,9 @@ int board_init(void) {
         if (ret)
             return 0;
 
-        vga_init(CVWSOC_VGA_ADDR, fb_base, ui_width, ui_height,
-        CVWSOC_VGA_CLK_DIV);
-        vga_fb_init(fb_base, ui_width, ui_height);
+        vga_init(CVWSOC_VGA_ADDR,
+                	fb_base,
+	                &vga_mode_320x240_in_640x480_100mhz);        
 
     }
 

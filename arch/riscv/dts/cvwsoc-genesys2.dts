@@ -8,6 +8,17 @@
 
   chosen {
     stdout-path = "/soc/uart@10000000";
+
+    //320 x 240
+    framebuffer0: framebuffer@BFF00000 {
+      compatible = "simple-framebuffer";
+      reg = <0x0 0xBFF00000 0x0 0x00025800>;
+      width = <320>;
+      height = <240>;
+      stride = <640>;  // 320 * 2
+      format = "r5g6b5";
+    };
+
   };
 
   memory@80000000 {
@@ -206,7 +217,7 @@
         compatible = "nuvoton,npcm750-sdhci";
         bus-width = <4>;
         clocks = <&sdhci_clk>;
-        max-frequency = <25000000>;
+        max-frequency = <15000000>;
         disable-wp;
         no-1-8-v;
         interrupts = <17>;
@@ -238,14 +249,5 @@
 
   };
     
-  //320 x 240
-  framebuffer0: framebuffer@BFF00000 {
-    compatible = "simple-framebuffer";
-    reg = <0x0 0xBFF00000 0x0 0x00025800>;
-    width = <320>;
-    height = <240>;
-    stride = <640>;  // 320 * 2
-    format = "r5g6b5";
-  };
 
 };
