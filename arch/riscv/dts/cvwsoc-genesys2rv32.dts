@@ -218,7 +218,7 @@
         compatible = "nuvoton,npcm750-sdhci";
         bus-width = <4>;
         clocks = <&sdhci_clk>;
-        max-frequency = <15000000>;
+        max-frequency = <10000000>;
         disable-wp;
         no-1-8-v;
         interrupts = <17>;
