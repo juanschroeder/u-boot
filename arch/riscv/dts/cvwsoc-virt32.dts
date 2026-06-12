@@ -144,6 +144,17 @@
     #size-cells = <2>;
     ranges;
 
+    uncached_memory: uncached-memory@84000000 {
+        reg = <0x0 0x84000000 0x0 0x00100000>; // 1 MiB uncached DDR
+        no-map;
+    };
+
+    // Prevent Linux from using this uncached region
+    framebuffer@84040000 {
+        reg = <0x0 0x84040000 0x0 0x000C0000>; // 768 KiB reserved
+        no-map;
+    };
+
     // Prevent it from using this region
     opensbi@80000000 {
         reg = <0x0 0x80000000  0x0 0x0080000>; // 512 Kib

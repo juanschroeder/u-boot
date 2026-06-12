@@ -209,11 +209,17 @@
     #size-cells = <2>;
     ranges;
 
-    /*
-    framebuffer@BFF00000 {
-        reg = <0x0 0xBFF00000 0x0 0x00100000>; // whole 1MB reserved (for debugging purposes)
+    uncached_memory: uncached-memory@84000000 {
+        reg = <0x0 0x84000000 0x0 0x00040000>; // 256 KiB uncached DDR
         no-map;
     };
+
+    /*
+    framebuffer@84040000 {
+        reg = <0x0 0x84040000 0x0 0x000C0000>; // 768 KiB reserved
+        no-map;
+    };
+
     dmabuffer@c {
         compatible = "shared-dma-pool"; // for later DMA use
         reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
