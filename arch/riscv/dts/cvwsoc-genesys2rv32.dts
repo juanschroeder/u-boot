@@ -10,9 +10,11 @@
     stdout-path = "/soc/uart@10000000";
 
     //320 x 240
-    framebuffer0: framebuffer@84040000 {
+    //framebuffer0: framebuffer@84040000 {
+    framebuffer0: framebuffer@85040000 {
       compatible = "simple-framebuffer";
-      reg = <0x0 0x84040000 0x0 0x00025800>;
+      //reg = <0x0 0x84040000 0x0 0x00025800>;
+      reg = <0x0 0x85040000 0x0 0x00025800>;
       width = <320>;
       height = <240>;
       stride = <640>;  // 320 * 2
@@ -239,6 +241,11 @@
 
     framebuffer@84040000 {
         reg = <0x0 0x84040000 0x0 0x000C0000>; // 768 KiB reserved
+        no-map;
+    };
+
+    framebuffer@85040000 {
+        reg = <0x0 0x85040000 0x0 0x000C0000>; // 768 KiB reserved
         no-map;
     };
 
