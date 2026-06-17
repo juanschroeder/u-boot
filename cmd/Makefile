@@ -262,6 +262,8 @@ obj-$(CONFIG_$(PHASE_)CMD_TLV_EEPROM) += tlv_eeprom.o
 
 obj-$(CONFIG_CMD_BCM_EXT_UTILS) += broadcom/
 
+obj-$(CONFIG_CMD_IDMA) += idma.o
+
 filechk_data_gz = (echo "static const char data_gz[] ="; cat $< | scripts/bin2c; echo ";")
 
 filechk_data_size = \
