@@ -236,13 +236,18 @@
     #size-cells = <2>;
     ranges;
 
-    uncached_memory1: uncached-memory@84000000 {
+    uncached_memory_usb: uncached-memory@84000000 {
         reg = <0x0 0x84000000 0x0 0x00040000>; // 256 KiB uncached DDR
         no-map;
     };
 
-    framebuffer@84040000 {
-        reg = <0x0 0x84040000 0x0 0x000C0000>; // 768 KiB reserved
+    uncached_memory_idma: idma-desc@84040000 {
+            reg = <0x0 0x84040000 0x0 0x00004000>; //16 KB
+            no-map;
+    };
+
+    uncached_rest@84044000 {
+        reg = <0x0 0x84044000 0x0 0x000BC000>;
         no-map;
     };
 
