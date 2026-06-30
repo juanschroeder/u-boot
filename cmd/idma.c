@@ -8,6 +8,7 @@
 #include <malloc.h>
 #include <mapmem.h>
 #include <linux/dma-mapping.h>
+#include <div64.h>
 
 #define IDMA_REG_CONF              0x000
 #define IDMA_REG_STATUS_0          0x004
@@ -48,6 +49,10 @@
 #define IDMA_DESC64_MAX_CHAIN_LENGTH        (0xFFFF)
 
 #define IDMA_DESC64_FLAGS_IRQ       (IDMA_DESC64_FLAG_IRQ_ON_DONE | IDMA_DESC64_FLAGS_NOIRQ)
+#define IDMA_DESC64_AXIS_TIMEOUT_US 10000UL
+#define IDMA_AUDIO_SAMPLE_RATE      44100U
+#define IDMA_AUDIO_FRAME_BYTES      8U
+#define IDMA_AUDIO_MAX_DURATION_MS  60000UL
 
 static inline unsigned long align_down_cache(unsigned long addr)
 {
@@ -73,6 +78,36 @@ struct idma_desc64_desc {
 	u64 src;
 	u64 dst;
 } __packed __aligned(8);
+
+/* One quadrant of a 256-entry signed Q23 sine table. */
+static const s32 idma_sine_quarter_q23[65] = {
+          0,  205867,  411609,  617104,  822227, 1026855, 1230864, 1434132,
+    1636536, 1837954, 2038265, 2237349, 2435084, 2631353, 2826037, 3019018,
+    3210181, 3399410, 3586592, 3771613, 3954362, 4134729, 4312606, 4487885,
+    4660460, 4830229, 4997087, 5160936, 5321676, 5479210, 5633444, 5784285,
+    5931641, 6075424, 6215548, 6351927, 6484481, 6613128, 6737792, 6858398,
+    6974872, 7087145, 7195148, 7298818, 7398091, 7492908, 7583211, 7668946,
+    7750062, 7826510, 7898243, 7965219, 8027396, 8084739, 8137211, 8184782,
+    8227422, 8265107, 8297813, 8325521, 8348214, 8365878, 8378503, 8386081,
+    8388607
+};
+
+static s32 idma_sine_sample_q23(u32 phase)
+{
+    u32 index = phase >> 24;
+    u32 offset = index & 0x3f;
+
+    switch (index >> 6) {
+    case 0:
+        return idma_sine_quarter_q23[offset];
+    case 1:
+        return idma_sine_quarter_q23[64 - offset];
+    case 2:
+        return -idma_sine_quarter_q23[offset];
+    default:
+        return -idma_sine_quarter_q23[64 - offset];
+    }
+}
 
 static int idma_desc64_run_copy(ulong base_addr, ulong src_addr, ulong dst_addr,
                                        ulong len, ulong chain_length)
@@ -216,6 +251,180 @@ static int idma_desc64_run_copy(ulong base_addr, ulong src_addr, ulong dst_addr,
 freemem:
     free(desc);
     return ret;
+}
+
+static int idma_desc64_submit_axis(ulong base_addr, ulong src_addr, ulong len,
+                                   ulong timeout_us, const char *name)
+{
+    void __iomem *base = (void __iomem *)base_addr;
+    struct idma_desc64_desc *desc;
+    ulong desc_addr;
+    ulong start, end;
+    ulong timeout;
+    u32 status;
+    int ret = CMD_RET_FAILURE;
+
+    if (!len || len > 0xffffffffUL) {
+        printf("%s: length must be in range 1..0xffffffff\n", name);
+        return CMD_RET_FAILURE;
+    }
+
+    desc = memalign(ARCH_DMA_MINALIGN, sizeof(*desc));
+    if (!desc) {
+        printf("%s: descriptor allocation failed\n", name);
+        return CMD_RET_FAILURE;
+    }
+
+    desc->length = (u32)len;
+    desc->flags = IDMA_DESC64_FLAGS_IRQ;
+    desc->next = IDMA_DESC64_NEXT_END;
+    desc->src = src_addr;
+    desc->dst = 0;
+
+    start = align_down_cache((ulong)desc);
+    end = align_up_cache((ulong)desc + sizeof(*desc));
+    flush_dcache_range(start, end);
+    start = align_down_cache(src_addr);
+    end = align_up_cache(src_addr + len);
+    flush_dcache_range(start, end);
+
+    status = readl(base + IDMA_DESC64_STATUS);
+    if (status & IDMA_DESC64_STATUS_FULL) {
+        printf("%s: descriptor FIFO full, status=0x%08x\n", name, status);
+        goto out;
+    }
+
+    desc_addr = map_to_sysmem(desc);
+    printf("%s: base=0x%lx desc=0x%lx src=0x%lx len=0x%lx\n",
+           name, base_addr, desc_addr, src_addr, len);
+    idma_write64(base, IDMA_DESC64_DESC_ADDR, IDMA_DESC64_DESC_ADDR + 4,
+                 (u64)desc_addr);
+    udelay(1);
+
+    timeout = timeout_us;
+    do {
+        status = readl(base + IDMA_DESC64_STATUS);
+        if (!(status & IDMA_DESC64_STATUS_BUSY))
+            break;
+        udelay(1);
+    } while (--timeout);
+
+    if (status & IDMA_DESC64_STATUS_BUSY) {
+        printf("%s: timeout, status=0x%08x\n", name,
+               readl(base + IDMA_DESC64_STATUS));
+        goto out;
+    }
+
+    printf("%s: PASS, len=0x%lx\n", name, len);
+    ret = CMD_RET_SUCCESS;
+
+out:
+    free(desc);
+    return ret;
+}
+
+static int idma_desc64_run_axis(ulong base_addr, ulong src_addr, ulong len)
+{
+    u8 *src = (u8 *)src_addr;
+    ulong i;
+
+    if (!len || len > 0xffffffffUL) {
+        printf("iDMA desc64 AXIS: length must be in range 1..0xffffffff\n");
+        return CMD_RET_FAILURE;
+    }
+
+    for (i = 0; i < len; i++)
+        src[i] = (u8)(i ^ 0xa5);
+
+    return idma_desc64_submit_axis(base_addr, src_addr, len,
+                                   IDMA_DESC64_AXIS_TIMEOUT_US,
+                                   "iDMA desc64 AXIS");
+}
+
+static int do_idma_desc_axis(struct cmd_tbl *cmdtp, int flag, int argc,
+                             char *const argv[])
+{
+    ulong base_addr;
+    ulong src_addr;
+    ulong len;
+
+    if (argc != 4)
+        return CMD_RET_USAGE;
+
+    base_addr = hextoul(argv[1], NULL);
+    src_addr = hextoul(argv[2], NULL);
+    len = hextoul(argv[3], NULL);
+    return idma_desc64_run_axis(base_addr, src_addr, len);
+}
+
+static int do_idma_sine(struct cmd_tbl *cmdtp, int flag, int argc,
+                        char *const argv[])
+{
+    ulong base_addr;
+    ulong src_addr;
+    ulong frequency;
+    ulong duration_ms;
+    ulong amplitude = 25;
+    ulong frames;
+    ulong len;
+    ulong timeout_us;
+    u64 value;
+    u32 phase = 0;
+    u32 phase_step;
+    u32 *samples;
+    ulong i;
+
+    if (argc < 5 || argc > 6)
+        return CMD_RET_USAGE;
+
+    base_addr = hextoul(argv[1], NULL);
+    src_addr = hextoul(argv[2], NULL);
+    frequency = dectoul(argv[3], NULL);
+    duration_ms = dectoul(argv[4], NULL);
+    if (argc == 6)
+        amplitude = dectoul(argv[5], NULL);
+
+    if (!frequency || frequency >= IDMA_AUDIO_SAMPLE_RATE / 2) {
+        printf("idma_sine: frequency must be 1..22049 Hz\n");
+        return CMD_RET_FAILURE;
+    }
+    if (!duration_ms || duration_ms > IDMA_AUDIO_MAX_DURATION_MS) {
+        printf("idma_sine: duration must be 1..60000 ms\n");
+        return CMD_RET_FAILURE;
+    }
+    if (!amplitude || amplitude > 100) {
+        printf("idma_sine: amplitude must be 1..100 percent\n");
+        return CMD_RET_FAILURE;
+    }
+
+    value = (u64)IDMA_AUDIO_SAMPLE_RATE * duration_ms + 999;
+    do_div(value, 1000);
+    if (value > 0xffffffffULL / IDMA_AUDIO_FRAME_BYTES) {
+        printf("idma_sine: generated buffer is too large\n");
+        return CMD_RET_FAILURE;
+    }
+    frames = (ulong)value;
+    len = frames * IDMA_AUDIO_FRAME_BYTES;
+
+    value = (u64)frequency << 32;
+    do_div(value, IDMA_AUDIO_SAMPLE_RATE);
+    phase_step = (u32)value;
+    samples = (u32 *)src_addr;
+
+    for (i = 0; i < frames; i++) {
+        s32 sample = idma_sine_sample_q23(phase);
+
+        sample = sample * (s32)amplitude / 100;
+        samples[2 * i] = (u32)sample;
+        samples[2 * i + 1] = (u32)sample;
+        phase += phase_step;
+    }
+
+    timeout_us = duration_ms * 1000 + 100000;
+    printf("idma_sine: %lu Hz, %lu frames, %lu ms, %lu%% amplitude\n",
+           frequency, frames, duration_ms, amplitude);
+    return idma_desc64_submit_axis(base_addr, src_addr, len, timeout_us,
+                                   "iDMA sine");
 }
 
 static int idma_reg_run_copy(ulong base_addr, ulong src_addr, ulong dst_addr, ulong len)
@@ -644,4 +853,18 @@ U_BOOT_CMD(
     "    - repeat <count> times desc64 descriptor copy test\n"
     "idma_desc chain <count> <base> <src> <dst> <len>\n"
     "    - request <count> chained descriptor copies (address offsets based on len increments)\n"
+);
+
+U_BOOT_CMD(
+    idma_desc_axis, 4, 1, do_idma_desc_axis,
+    "play DDR bytes through the dedicated iDMA AXI-Stream frontend",
+    "<base> <src> <len>\n"
+    "    - fill src with i^0xa5 and submit one descriptor\n"
+);
+
+U_BOOT_CMD(
+    idma_sine, 6, 1, do_idma_sine,
+    "generate and play a stereo sine wave through iDMA AXI-Stream",
+    "<base> <src> <frequency_hz> <duration_ms> [amplitude_percent]\n"
+    "    - generate signed 24-bit, 44.1 kHz stereo samples and submit one descriptor\n"
 );

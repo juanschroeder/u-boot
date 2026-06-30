@@ -254,11 +254,13 @@
         no-map;
     };
 
-    dmabuffer@c {
+    /*
+    dmabuffer@BFE00000 {
         compatible = "shared-dma-pool"; // for later DMA use
         reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
         no-map;
     };
+     */
 
     // Prevent it from using this region
     opensbi@80000000 {
