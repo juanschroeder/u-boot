@@ -40,6 +40,12 @@
 #define IDMA_DESC64_FLAG_SRC_INCR    (1U << 1)
 #define IDMA_DESC64_FLAG_DST_INCR    (1U << 3)
 #define IDMA_DESC64_FLAG_SERIALIZE   (1U << 6)
+#define IDMA_DESC64_FLAG_PRESERVE    (1U << 30)
+#define IDMA_DESC64_FLAG_PROT_SRC_BIT    24
+#define IDMA_DESC64_FLAG_PROT_DST_BIT    27
+
+#define IDMA_DESC64_PROT_AXI            (0)
+#define IDMA_DESC64_PROT_AXIS           (5)
 
 #define IDMA_DESC64_FLAGS_NOIRQ       (IDMA_DESC64_FLAG_SRC_INCR | \
 				 IDMA_DESC64_FLAG_DST_INCR | \
@@ -48,8 +54,15 @@
 // There's apparently no maximum length, so this value is arbitrary
 #define IDMA_DESC64_MAX_CHAIN_LENGTH        (0xFFFF)
 
-#define IDMA_DESC64_FLAGS_IRQ       (IDMA_DESC64_FLAG_IRQ_ON_DONE | IDMA_DESC64_FLAGS_NOIRQ)
+#define IDMA_DESC64_FLAGS_IRQ               (IDMA_DESC64_FLAG_IRQ_ON_DONE | IDMA_DESC64_FLAGS_NOIRQ)
+#define IDMA_DESC64_FLAGS_AXI_TO_AXIS       ((IDMA_DESC64_PROT_AXI << IDMA_DESC64_FLAG_PROT_SRC_BIT) | \
+                                            (IDMA_DESC64_PROT_AXIS << IDMA_DESC64_FLAG_PROT_DST_BIT))
+
 #define IDMA_DESC64_AXIS_TIMEOUT_US 10000UL
+#define IDMA_DESC64_CYCLIC_CTRL      0x110
+#define IDMA_DESC64_CYCLIC_STOP      BIT(0)
+#define IDMA_DESC64_CYCLIC_RUNNING   BIT(1)
+#define IDMA_DESC64_CYCLIC_STOPPED   BIT(2)
 #define IDMA_AUDIO_SAMPLE_RATE      44100U
 #define IDMA_AUDIO_FRAME_BYTES      8U
 #define IDMA_AUDIO_MAX_DURATION_MS  60000UL
@@ -78,6 +91,8 @@ struct idma_desc64_desc {
 	u64 src;
 	u64 dst;
 } __packed __aligned(8);
+
+static struct idma_desc64_desc *idma_cyclic_desc;
 
 /* One quadrant of a 256-entry signed Q23 sine table. */
 static const s32 idma_sine_quarter_q23[65] = {
@@ -276,7 +291,7 @@ static int idma_desc64_submit_axis(ulong base_addr, ulong src_addr, ulong len,
     }
 
     desc->length = (u32)len;
-    desc->flags = IDMA_DESC64_FLAGS_IRQ;
+    desc->flags = IDMA_DESC64_FLAGS_IRQ | IDMA_DESC64_FLAGS_AXI_TO_AXIS;
     desc->next = IDMA_DESC64_NEXT_END;
     desc->src = src_addr;
     desc->dst = 0;
@@ -425,6 +440,113 @@ static int do_idma_sine(struct cmd_tbl *cmdtp, int flag, int argc,
            frequency, frames, duration_ms, amplitude);
     return idma_desc64_submit_axis(base_addr, src_addr, len, timeout_us,
                                    "iDMA sine");
+}
+
+static int do_idma_sine_cyclic(struct cmd_tbl *cmdtp, int flag, int argc,
+                               char *const argv[])
+{
+    void __iomem *base;
+    ulong base_addr, src_addr, frequency, period_ms, amplitude = 25;
+    ulong frames, len, desc_addr, i;
+    u64 value;
+    u32 phase = 0, phase_step;
+    u32 *samples;
+
+    if (argc < 5 || argc > 6)
+        return CMD_RET_USAGE;
+    if (idma_cyclic_desc) {
+        printf("idma_sine_cyclic: a cyclic transfer is already active\n");
+        return CMD_RET_FAILURE;
+    }
+
+    base_addr = hextoul(argv[1], NULL);
+    src_addr = hextoul(argv[2], NULL);
+    frequency = dectoul(argv[3], NULL);
+    period_ms = dectoul(argv[4], NULL);
+    if (argc == 6)
+        amplitude = dectoul(argv[5], NULL);
+    if (!frequency || frequency >= IDMA_AUDIO_SAMPLE_RATE / 2 ||
+        !period_ms || period_ms > IDMA_AUDIO_MAX_DURATION_MS ||
+        !amplitude || amplitude > 100)
+        return CMD_RET_USAGE;
+
+    value = (u64)IDMA_AUDIO_SAMPLE_RATE * period_ms + 999;
+    do_div(value, 1000);
+    frames = (ulong)value;
+    len = frames * IDMA_AUDIO_FRAME_BYTES;
+    if (!len || len > 0xffffffffUL)
+        return CMD_RET_FAILURE;
+
+    value = (u64)frequency << 32;
+    do_div(value, IDMA_AUDIO_SAMPLE_RATE);
+    phase_step = (u32)value;
+    samples = (u32 *)src_addr;
+    for (i = 0; i < frames; i++) {
+        s32 sample = idma_sine_sample_q23(phase);
+
+        sample = sample * (s32)amplitude / 100;
+        samples[2 * i] = (u32)sample;
+        samples[2 * i + 1] = (u32)sample;
+        phase += phase_step;
+    }
+
+    idma_cyclic_desc = memalign(ARCH_DMA_MINALIGN, sizeof(*idma_cyclic_desc));
+    if (!idma_cyclic_desc)
+        return CMD_RET_FAILURE;
+    desc_addr = map_to_sysmem(idma_cyclic_desc);
+    idma_cyclic_desc->length = (u32)len;
+    idma_cyclic_desc->flags = IDMA_DESC64_FLAGS_NOIRQ |
+                              IDMA_DESC64_FLAGS_AXI_TO_AXIS |
+                              IDMA_DESC64_FLAG_PRESERVE;
+    idma_cyclic_desc->next = (u64)desc_addr;
+    idma_cyclic_desc->src = src_addr;
+    idma_cyclic_desc->dst = 0;
+    flush_dcache_range(align_down_cache((ulong)idma_cyclic_desc),
+                       align_up_cache((ulong)idma_cyclic_desc +
+                                      sizeof(*idma_cyclic_desc)));
+    flush_dcache_range(align_down_cache(src_addr),
+                       align_up_cache(src_addr + len));
+
+    base = (void __iomem *)base_addr;
+    if (readl(base + IDMA_DESC64_STATUS) & IDMA_DESC64_STATUS_FULL) {
+        free(idma_cyclic_desc);
+        idma_cyclic_desc = NULL;
+        return CMD_RET_FAILURE;
+    }
+    idma_write64(base, IDMA_DESC64_DESC_ADDR, IDMA_DESC64_DESC_ADDR + 4,
+                 (u64)desc_addr);
+    printf("idma_sine_cyclic: running desc=0x%lx, %lu Hz, %lu ms period\n",
+           desc_addr, frequency, period_ms);
+    return CMD_RET_SUCCESS;
+}
+
+static int do_idma_cyclic_stop(struct cmd_tbl *cmdtp, int flag, int argc,
+                               char *const argv[])
+{
+    void __iomem *base;
+    ulong timeout = IDMA_TIMEOUT_US;
+    u32 ctrl;
+
+    if (argc < 2 || argc > 3)
+        return CMD_RET_USAGE;
+    base = (void __iomem *)hextoul(argv[1], NULL);
+    if (argc == 3)
+        timeout = dectoul(argv[2], NULL);
+    writel(IDMA_DESC64_CYCLIC_STOP, base + IDMA_DESC64_CYCLIC_CTRL);
+    do {
+        ctrl = readl(base + IDMA_DESC64_CYCLIC_CTRL);
+        if (ctrl & IDMA_DESC64_CYCLIC_STOPPED)
+            break;
+        udelay(1);
+    } while (--timeout);
+    if (!(ctrl & IDMA_DESC64_CYCLIC_STOPPED)) {
+        printf("idma_cyclic_stop: timeout, CYCLIC_CTRL=0x%08x\n", ctrl);
+        return CMD_RET_FAILURE;
+    }
+    free(idma_cyclic_desc);
+    idma_cyclic_desc = NULL;
+    printf("idma_cyclic_stop: stopped, CYCLIC_CTRL=0x%08x\n", ctrl);
+    return CMD_RET_SUCCESS;
 }
 
 static int idma_reg_run_copy(ulong base_addr, ulong src_addr, ulong dst_addr, ulong len)
@@ -867,4 +989,18 @@ U_BOOT_CMD(
     "generate and play a stereo sine wave through iDMA AXI-Stream",
     "<base> <src> <frequency_hz> <duration_ms> [amplitude_percent]\n"
     "    - generate signed 24-bit, 44.1 kHz stereo samples and submit one descriptor\n"
+);
+
+U_BOOT_CMD(
+    idma_sine_cyclic, 6, 1, do_idma_sine_cyclic,
+    "start cyclic stereo sine playback through iDMA AXI-Stream",
+    "<base> <src> <frequency_hz> <period_ms> [amplitude_percent]\n"
+    "    - create a preserved circular descriptor and return while it plays\n"
+);
+
+U_BOOT_CMD(
+    idma_cyclic_stop, 3, 1, do_idma_cyclic_stop,
+    "gracefully stop cyclic iDMA AXI-Stream playback",
+    "<base> [timeout_us]\n"
+    "    - issue CYCLIC_CTRL.STOP and wait for STOPPED\n"
 );
