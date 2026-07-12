@@ -442,6 +442,25 @@ static int do_idma_sine(struct cmd_tbl *cmdtp, int flag, int argc,
                                    "iDMA sine");
 }
 
+
+#define IDMA_AXIS_REG_IRQ_STATUS        0x100
+#define IDMA_AXIS_REG_IRQ_ENABLE        0x104
+
+static void idma_axis_enable_interrupts(ulong base_addr, int enable)
+{
+    void __iomem *base;
+    u32 irq_status;
+
+
+	base = (void __iomem *)base_addr;
+
+    writel(0x00000001, base + IDMA_AXIS_REG_IRQ_STATUS); // clear
+    if (enable)
+        writel(0x00000001, base + IDMA_AXIS_REG_IRQ_ENABLE);
+    else
+        writel(0x00000000, base + IDMA_AXIS_REG_IRQ_ENABLE);
+}
+
 static int do_idma_sine_cyclic(struct cmd_tbl *cmdtp, int flag, int argc,
                                char *const argv[])
 {
@@ -495,7 +514,7 @@ static int do_idma_sine_cyclic(struct cmd_tbl *cmdtp, int flag, int argc,
         return CMD_RET_FAILURE;
     desc_addr = map_to_sysmem(idma_cyclic_desc);
     idma_cyclic_desc->length = (u32)len;
-    idma_cyclic_desc->flags = IDMA_DESC64_FLAGS_NOIRQ |
+    idma_cyclic_desc->flags = IDMA_DESC64_FLAGS_IRQ |
                               IDMA_DESC64_FLAGS_AXI_TO_AXIS |
                               IDMA_DESC64_FLAG_PRESERVE;
     idma_cyclic_desc->next = (u64)desc_addr;
@@ -513,10 +532,29 @@ static int do_idma_sine_cyclic(struct cmd_tbl *cmdtp, int flag, int argc,
         idma_cyclic_desc = NULL;
         return CMD_RET_FAILURE;
     }
+
+    printf("idma_sine_cyclic: enabling interrupts.\n");
+    idma_axis_enable_interrupts(base_addr, 1);
+    printf("idma_sine_cyclic: enabled.\n");
+
     idma_write64(base, IDMA_DESC64_DESC_ADDR, IDMA_DESC64_DESC_ADDR + 4,
                  (u64)desc_addr);
-    printf("idma_sine_cyclic: running desc=0x%lx, %lu Hz, %lu ms period\n",
-           desc_addr, frequency, period_ms);
+
+    u32 before, after;
+
+    printf("idma_sine_cyclic: waiting for IRQ status.\n");
+    /* Wait until one cyclic-period completion latches the wrapper IRQ. */
+    while (!(readl( base + IDMA_AXIS_REG_IRQ_STATUS) & 1));
+
+    printf("idma_sine_cyclic: IRQ status detected.\n");
+    before = readl(base + IDMA_AXIS_REG_IRQ_STATUS);
+    // acknowledge
+    writel(1, base + IDMA_AXIS_REG_IRQ_STATUS);
+    after = readl(base + IDMA_AXIS_REG_IRQ_STATUS);
+
+
+    printf("idma_sine_cyclic: running desc=0x%lx, %lu Hz, %lu ms period. IRQ clear: before: %d, after: %d\n",
+           desc_addr, frequency, period_ms, before, after);
     return CMD_RET_SUCCESS;
 }
 
