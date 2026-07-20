@@ -23,9 +23,7 @@
 
   memory@80000000 {
     device_type = "memory";
-    // not using beyond 0x87600000 for now
-    //reg = <0x00 0x80000000 0x00 0x8000000>;
-    reg = <0x00 0x80000000 0x00 0x7600000>;
+    reg = <0x00 0x80000000 0x00 0x8000000>;
   };
 
   cpus {
@@ -40,11 +38,12 @@
       reg = <0x00>;
       status = "okay";
       compatible = "riscv";
-      riscv,isa-base = "rv64i";
-      riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "sstc", "svade", "svadu", "svinval", "svnapot", "svpbmt", "zba", "zbb", "zbc", "zbs", "zca", "zcb", "zcd", "zfa", "zfh", "zkn", "zkt", "zicbom", "zicboz", "zicntr", "zicond", "zicsr", "zifencei", "zihpm";
+      riscv,isa = "rv32imafdc_zicbom_zicboz_zicbop_zicsr_zifencei";
+      riscv,isa-base = "rv32i";
+      riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "zicbom", "zicboz", "zicbop", "zicsr", "zifencei";
       riscv,cboz-block-size = <64>;
       riscv,cbom-block-size = <64>;
-      mmu-type = "riscv,sv48";
+      mmu-type = "riscv,sv32";
 
       interrupt-controller {
         #interrupt-cells = <0x01>;
@@ -145,12 +144,12 @@
     eth0: ethernet@11003000 {
         compatible = "litex,liteeth";
 
-        reg = <0x0 0x11003000 0x0 0x100>,   // mac  (csr+0x1000) 
+        reg = <0x0 0x11003000 0x0 0x100>,     // mac  (csr+0x1000)
                 <0x0 0x11002800 0x0 0x100>,   // mdio (csr+0x0800)
-                <0x0 0x11000000 0x0 0x2000>;  // buffer 
+                <0x0 0x11000000 0x0 0x2000>;  // buffer
         reg-names = "mac", "mdio", "buffer";
 
-        interrupt-parent = <0x03>;
+        interrupt-parent = <&plic>;
         interrupts = <0xC>;
 
         litex,rx-slots  = <2>;
@@ -167,6 +166,7 @@
       clock-output-names = "busclk";
     };
 
+    /*
     cdma0: dma@100A0000 {
         compatible = "xlnx,axi-cdma-1.00.a";
         reg = <0x0 0x100A0000 0x0 0x1000>;
@@ -192,6 +192,7 @@
             xlnx,max-burst-len = <0x10>;
         };
     };
+     */
 
     usb@100C0000 {
         compatible = "generic-ohci";
@@ -200,7 +201,32 @@
         interrupts = <14>;
         dma-noncoherent;
     };
-    
+
+    // SDHCI base clock (divided in Hw)
+    sdhci_clk: sdhci-clk {
+        #clock-cells = <0>;
+        compatible = "fixed-factor-clock";
+        clocks = <&busclk>;
+        clock-div = <4>;
+        clock-mult = <1>;
+        clock-output-names = "sdhci_clk";
+        status = "disabled";
+    };
+
+    mmc@10090000 {
+        #address-cells = <0x00000001>;
+        #size-cells = <0x00000000>;
+        reg = <0x00000000 0x10090000 0x00000000 0x00002000>;
+        compatible = "nuvoton,npcm750-sdhci";
+        bus-width = <4>;
+        clocks = <&sdhci_clk>;
+        max-frequency = <10000000>;
+        disable-wp;
+        no-1-8-v;
+        interrupts = <17>;
+        interrupt-parent = <&plic>;
+        status = "disabled";
+    };
   };
 
   reserved-memory {
@@ -235,5 +261,6 @@
         no-map;
     };
   };
+    
 
 };
