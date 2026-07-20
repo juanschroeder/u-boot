@@ -22,6 +22,8 @@
       height = <240>;
       stride = <640>;  // 320 * 2
       format = "r5g6b5";
+      /* Necessary to guess initialization settings*/
+      clocks = <&busclk>;
     };
 
   };
