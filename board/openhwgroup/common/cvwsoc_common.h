@@ -23,6 +23,7 @@ typedef struct {
 } axi_vga_mode_t;
 
 
+extern const axi_vga_mode_t vga_mode_320x240_in_640x480_60mhz;
 extern const axi_vga_mode_t vga_mode_320x240_in_640x480_81mhz;
 extern const axi_vga_mode_t vga_mode_320x240_in_640x480_100mhz;
 extern const axi_vga_mode_t vga_mode_320x240_in_640x480_200mhz;

@@ -21,6 +21,10 @@ struct vga_bus_mode {
 
 static const struct vga_bus_mode vga_bus_modes[] = {
     {
+        .bus_rate = 60000000UL,
+        .mode = &vga_mode_320x240_in_640x480_60mhz,
+    },
+    {
         .bus_rate = 81250000UL,
         .mode = &vga_mode_320x240_in_640x480_81mhz,
     },
@@ -111,7 +115,7 @@ int board_init(void) {
                 __func__, bus_rate);
             return 0;
         }
-        
+
         printf("%s: Initializing VGA at 0x%x with framebuffer at 0x%lx\n",
              __func__, CVWSOC_VGA_ADDR, fb_base);
         vga_init(CVWSOC_VGA_ADDR, fb_base, vga_mode);

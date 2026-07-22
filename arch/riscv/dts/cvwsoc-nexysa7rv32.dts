@@ -31,8 +31,8 @@
   cpus {
     #address-cells = <0x01>;
     #size-cells = <0x00>;
-    clock-frequency = <20000000>;
-    timebase-frequency = <20000000>;
+    clock-frequency = <25000000>;
+    timebase-frequency = <25000000>;
 
     cpu@0 {
       phandle = <0x01>;
@@ -65,7 +65,7 @@
     refclk: refclk {
       #clock-cells = <0>;
       compatible = "fixed-clock";
-      clock-frequency = <20000000>;
+      clock-frequency = <25000000>;
       clock-output-names = "xtal";
     };
 
@@ -164,7 +164,7 @@
     busclk: busclk {
       #clock-cells = <0>;
       compatible = "fixed-clock";
-      clock-frequency = <81250000>;
+      clock-frequency = <60000000>;
       clock-output-names = "busclk";
     };
 
