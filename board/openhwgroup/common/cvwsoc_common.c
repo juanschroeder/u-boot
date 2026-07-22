@@ -22,6 +22,47 @@
 #include <stdint.h>
 #include <stddef.h>
 
+const axi_vga_mode_t vga_mode_320x240_in_640x480_60mhz = {
+
+    .clkdiv = 2,
+
+    .hvis  = 320,
+    .hfp   = 16,
+    .hsync = 96,
+    .hbp   = 520,
+
+    .vvis  = 240,
+    .vfp   = 10,
+    .vsync = 2,
+    .vbp   = 273,
+
+    .fb_width  = 320,
+    .fb_height = 240,
+    .burst_len = 0x4f,
+    .ctrl      = 0x00000001,
+};
+
+
+const axi_vga_mode_t vga_mode_320x240_in_640x480_81mhz = {
+    .clkdiv = 3,
+
+    .hvis = 320,
+    .hfp = 16,
+    .hsync = 96,
+    .hbp = 428,
+
+    .vvis = 240,
+    .vfp = 10,
+    .vsync = 2,
+    .vbp = 273,
+
+    .fb_width = 320,
+    .fb_height = 240,
+
+    .burst_len = 0x4f,
+    .ctrl = 0x00000001
+};
+
 const axi_vga_mode_t vga_mode_320x240_in_640x480_100mhz = {
     .clkdiv = 4,
 

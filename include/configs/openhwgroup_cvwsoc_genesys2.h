@@ -4,7 +4,4 @@
 #include <linux/sizes.h>
 #include "openhwgroup_cvwsoc_common.h"
 
-
-#define CVWSOC_VGA_ADDR             0x100B0000
-
 #endif

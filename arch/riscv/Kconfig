@@ -76,6 +76,9 @@ config TARGET_OPENHWGROUP_CVWSOC_VIRT
 config TARGET_OPENHWGROUP_CVWSOC_VIRT32
         bool "Support Core-V Wally SoC for QEMU/simulation"
 
+config TARGET_OPENHWGROUP_CVWSOC
+        bool "Support Core-V Wally SoC (generic)"
+
 endchoice
 
 config SYS_ICACHE_OFF
@@ -139,6 +142,7 @@ source "board/openhwgroup/cvwsoc_genesys2/Kconfig"
 source "board/openhwgroup/cvwsoc_genesys2rv32/Kconfig"
 source "board/openhwgroup/cvwsoc_virt/Kconfig"
 source "board/openhwgroup/cvwsoc_virt32/Kconfig"
+source "board/openhwgroup/cvwsoc/Kconfig"
 
 # platform-specific options below
 source "arch/riscv/cpu/andes/Kconfig"

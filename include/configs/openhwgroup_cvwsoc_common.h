@@ -6,4 +6,6 @@
 #define CFG_SYS_SDRAM_BASE		0x80000000
 #define CONFIG_SYS_INIT_SP_ADDR		(CFG_SYS_SDRAM_BASE + SZ_2M)
 
+#define CVWSOC_VGA_ADDR             0x100B0000
+
 #endif
