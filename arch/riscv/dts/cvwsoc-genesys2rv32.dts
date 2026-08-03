@@ -10,10 +10,8 @@
     stdout-path = "/soc/uart@10000000";
 
     //320 x 240
-    //framebuffer0: framebuffer@84040000 {
     framebuffer0: framebuffer@85040000 {
       compatible = "simple-framebuffer";
-      //reg = <0x0 0x84040000 0x0 0x00025800>;
       reg = <0x0 0x85040000 0x0 0x00025800>;
       width = <320>;
       height = <240>;
@@ -132,6 +130,7 @@
       compatible = "sifive,clint0\0riscv,clint0";
     };
 
+    /*
     uart1: uart@11004000 {
         compatible = "ns16550a";
         reg = <0x0 0x11004000 0x0 0x1000>;
@@ -145,6 +144,7 @@
 
         status = "okay";
     };
+     */
 
     eth0: ethernet@100D3000 {
         compatible = "litex,liteeth";
@@ -171,6 +171,7 @@
       clock-output-names = "busclk";
     };
 
+    /*
     cdma0: dma@100A0000 {
         compatible = "xlnx,axi-cdma-1.00.a";
         reg = <0x0 0x100A0000 0x0 0x1000>;
@@ -196,6 +197,7 @@
             xlnx,max-burst-len = <0x10>;
         };
     };
+     */
 
     usb@100C0000 {
         compatible = "generic-ohci";
@@ -228,7 +230,6 @@
         interrupts = <17>;
         interrupt-parent = <&plic>;
     };
-    
   };
 
   reserved-memory {
@@ -256,20 +257,12 @@
         no-map;
     };
 
-    /*
-    dmabuffer@BFE00000 {
-        compatible = "shared-dma-pool"; // for later DMA use
-        reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
-        no-map;
-    };
-     */
 
     // Prevent it from using this region
     opensbi@80000000 {
         reg = <0x0 0x80000000  0x0 0x0080000>; // 512 Kib
         no-map;
     };
-
   };
     
 
