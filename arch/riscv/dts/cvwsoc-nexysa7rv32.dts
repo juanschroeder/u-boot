@@ -112,13 +112,17 @@
 
       #address-cells = <1>;
       #size-cells = <0>;
+      // Currently disabled in u-boot => AXI SDHCI peripheral is mmc0
+      /*
       mmc@0 {
         compatible = "mmc-spi-slot";
         reg = <0>;
         spi-max-frequency = <25000000>;
         voltage-ranges = <3300 3300>;
         disable-wp;
+        status = "disabled";
       };
+      */
     };
 
     clint@2000000 {
@@ -212,7 +216,6 @@
         clock-div = <4>;
         clock-mult = <1>;
         clock-output-names = "sdhci_clk";
-        status = "disabled";
     };
 
     mmc@10090000 {
@@ -222,12 +225,11 @@
         compatible = "nuvoton,npcm750-sdhci";
         bus-width = <4>;
         clocks = <&sdhci_clk>;
-        max-frequency = <10000000>;
+        max-frequency = <25000000>;
         disable-wp;
         no-1-8-v;
         interrupts = <17>;
         interrupt-parent = <&plic>;
-        status = "disabled";
     };
   };
 
